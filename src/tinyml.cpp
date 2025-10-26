@@ -1,47 +1,50 @@
 #include "tinyml.h"
 
 // Globals, for the convenience of one-shot setup.
-namespace
-{
-    tflite::ErrorReporter *error_reporter = nullptr;
-    const tflite::Model *model = nullptr;
-    tflite::MicroInterpreter *interpreter = nullptr;
-    TfLiteTensor *input = nullptr;
-    TfLiteTensor *output = nullptr;
-    constexpr int kTensorArenaSize = 8 * 1024; // Adjust size based on your model
-    uint8_t tensor_arena[kTensorArenaSize];
-} // namespace
+// namespace {
+// tflite::ErrorReporter* error_reporter = nullptr;
+// const tflite::Model* model = nullptr;
+// tflite::MicroInterpreter* interpreter = nullptr;
+// TfLiteTensor* input = nullptr;
+// TfLiteTensor* output = nullptr;
+// constexpr int kTensorArenaSize = 8 * 1024; // Adjust size based on your model
+// uint8_t tensor_arena[kTensorArenaSize];
+// } // namespace
 
-void setupTinyML()
-{
-    Serial.println("TensorFlow Lite Init....");
-    static tflite::MicroErrorReporter micro_error_reporter;
-    error_reporter = &micro_error_reporter;
+const int lightPin =  1;  // Use an ADC-capable pin (GPIO32–39)
+int lightValue = 0;
 
-    model = tflite::GetModel(dht_anomaly_model_tflite); // g_model_data is from model_data.h
-    if (model->version() != TFLITE_SCHEMA_VERSION)
-    {
-        error_reporter->Report("Model provided is schema version %d, not equal to supported version %d.",
-                               model->version(), TFLITE_SCHEMA_VERSION);
-        return;
-    }
+void setupTinyML(){
+    // Serial.println("TensorFlow Lite Init....");
+    // static tflite::MicroErrorReporter micro_error_reporter;
+    // error_reporter = &micro_error_reporter;
 
-    static tflite::AllOpsResolver resolver;
-    static tflite::MicroInterpreter static_interpreter(
-        model, resolver, tensor_arena, kTensorArenaSize, error_reporter);
-    interpreter = &static_interpreter;
+    // model = tflite::GetModel(dht_anomaly_model_tflite); // g_model_data is from model_data.h
+    // if (model->version() != TFLITE_SCHEMA_VERSION) {
+    // error_reporter->Report("Model provided is schema version %d, not equal to supported version %d.",
+    //                         model->version(), TFLITE_SCHEMA_VERSION);
+    // return;
+    // }
 
-    TfLiteStatus allocate_status = interpreter->AllocateTensors();
-    if (allocate_status != kTfLiteOk)
-    {
-        error_reporter->Report("AllocateTensors() failed");
-        return;
-    }
+    // static tflite::AllOpsResolver resolver;
+    // static tflite::MicroInterpreter static_interpreter(
+    //     model, resolver, tensor_arena, kTensorArenaSize, error_reporter);
+    // interpreter = &static_interpreter;
 
-    input = interpreter->input(0);
-    output = interpreter->output(0);
+    // TfLiteStatus allocate_status = interpreter->AllocateTensors();
+    // if (allocate_status != kTfLiteOk) {
+    // error_reporter->Report("AllocateTensors() failed");
+    // return;
+    // }
 
-    Serial.println("TensorFlow Lite Micro initialized on ESP32.");
+    // input = interpreter->input(0);
+    // output = interpreter->output(0);
+
+
+    // Serial.println("TensorFlow Lite Micro initialized on ESP32.");
+    Serial.begin(115200);
+    delay(1000);
+    Serial.println("Reading light sensor...");
 }
 
 void tiny_ml_task(void *pvParameters)
@@ -49,27 +52,33 @@ void tiny_ml_task(void *pvParameters)
 
     setupTinyML();
 
-    while (1)
-    {
+    while(1){
+       
+        // // Prepare input data (e.g., sensor readings)
+        // // For a simple example, let's assume a single float input
+        // input->data.f[0] = glob_temperature; 
+        // input->data.f[1] = glob_humidity; 
 
-        // Prepare input data (e.g., sensor readings)
-        // For a simple example, let's assume a single float input
-        input->data.f[0] = glob_temperature;
-        input->data.f[1] = glob_humidity;
+        // // Run inference
+        // TfLiteStatus invoke_status = interpreter->Invoke();
+        // if (invoke_status != kTfLiteOk) {
+        // error_reporter->Report("Invoke failed");
+        // return;
+        // }
 
-        // Run inference
-        TfLiteStatus invoke_status = interpreter->Invoke();
-        if (invoke_status != kTfLiteOk)
-        {
-            error_reporter->Report("Invoke failed");
-            return;
-        }
+        // // Get and process output
+        // float result = output->data.f[0];
+        // Serial.print("Inference result: ");
+        // Serial.println(result);
 
-        // Get and process output
-        float result = output->data.f[0];
-        Serial.print("Inference result: ");
-        Serial.println(result);
+        // vTaskDelay(5000); 
 
-        vTaskDelay(5000);
+
+        lightValue = analogRead(lightPin);  // Read ADC value (0–4095)
+        
+        Serial.print("Light sensor value: ");
+        Serial.println(lightValue);
+
+        delay(500);  // Read twice per second
     }
 }
