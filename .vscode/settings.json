@@ -2,5 +2,6 @@
     "idf.portWin": "COM12",
     "idf.openOcdConfigs": [
         "board/esp32s3-bridge.cfg"
-    ]
+    ],
+    "cmake.sourceDirectory": "C:/Users/hehe/Documents/GitHub/midterm-embeded/lib/ArduinoJson/src"
 }
