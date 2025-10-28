@@ -11,6 +11,8 @@ WebServer server(80);
 unsigned long connect_start_ms = 0;
 bool connecting = false;
 
+Adafruit_NeoPixel NeoPixel(4, LED2_PIN, NEO_GRB + NEO_KHZ800);
+
 String mainPage()
 {
   float temperature = glob_temperature;
@@ -155,12 +157,18 @@ void handleToggle()
   if (led == 1)
   {
     led1_state = !led1_state;
-    Serial.println("YOUR CODE TO CONTROL LED1");
+    digitalWrite(LED1_PIN, led1_state);
   }
   else if (led == 2)
   {
     led2_state = !led2_state;
-    Serial.println("YOUR CODE TO CONTROL LED2");
+    NeoPixel.clear();
+    
+    for (int pixel = 0; pixel < 3; pixel++)
+    {
+      NeoPixel.setPixelColor(pixel, NeoPixel.Color(0, led2_state, 0));
+      NeoPixel.show();
+    }
   }
   server.send(200, "application/json",
               "{\"led1\":\"" + String(led1_state ? "ON" : "OFF") +
@@ -196,7 +204,10 @@ void startAP()
 // ========== Main task ==========
 void main_server_task(void *pvParameters)
 {
+  pinMode(LED1_PIN, OUTPUT);
   pinMode(BOOT_PIN, INPUT_PULLUP);
+
+  // NeoPixel.begin();
 
   startAP();
   setupServer();
