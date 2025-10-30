@@ -1,178 +1,82 @@
 #include "mainserver.h"
-#include <WiFi.h>
-#include <WebServer.h>
 
-bool led1_state = false;
-bool led2_state = false;
-bool isAPMode = true;
+bool fan_state = false;
+bool exit_sign_state = false;
 
 WebServer server(80);
 
-unsigned long connect_start_ms = 0;
-bool connecting = false;
+Adafruit_NeoPixel NeoPixel(4, EXIT_PIN, NEO_GRB + NEO_KHZ800);
 
-Adafruit_NeoPixel NeoPixel(4, LED2_PIN, NEO_GRB + NEO_KHZ800);
-
-String mainPage()
-{
-  float temperature = glob_temperature;
-  float humidity = glob_humidity;
-  String led1 = led1_state ? "ON" : "OFF";
-  String led2 = led2_state ? "ON" : "OFF";
-
-  return R"rawliteral(
-  <!DOCTYPE html>
-  <html lang="vi">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 Dashboard</title>
-    <style>
-      body {
-        font-family: "Segoe UI", Arial, sans-serif;
-        background: #f2f3f5;
-        color: #333;
-        text-align: center;
-        margin: 0;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .logo {
-        width: 220px;
-        height: 90px;
-        border-radius: 20px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        margin-bottom: 25px;
-        background: #f2f3f5;
-        object-fit: contain;
-        padding: 10px 15px;
-      }
-
-      .container {
-        background: linear-gradient(135deg, #1e90ff, #00bfff);
-        padding: 35px 45px;
-        border-radius: 20px;
-        box-shadow: 0 4px 25px rgba(0,0,0,0.15);
-        width: 90%;
-        max-width: 400px;
-        color: #fff;
-        backdrop-filter: blur(6px);
-      }
-
-      h1 {
-        font-size: 1.8em;
-        margin-bottom: 20px;
-      }
-
-      .sensor {
-        font-size: 1.1em;
-        margin: 10px 0;
-      }
-
-      .sensor span {
-        font-weight: bold;
-        color: #00ffcc;
-      }
-
-      button {
-        margin: 10px;
-        background: #00ffcc;
-        color: #000;
-        font-weight: bold;
-        border: none;
-        border-radius: 20px;
-        padding: 10px 20px;
-        cursor: pointer;
-        transition: all 0.3s;
-        font-size: 1em;
-      }
-
-      button:hover {
-        background: #00e0b0;
-        transform: scale(1.05);
-      }
-
-      #settings {
-        background: #f2f3f5;
-        color: #007bff;
-        font-weight: bold;
-      }
-    </style>
-  </head>
-
-  <body>
-    <div class="container">
-      <h1>📊 ESP32 Dashboard</h1>
-      <div class="sensor">
-        🌡️ Nhiệt độ: <span id="temp">)rawliteral" +
-         String(temperature) + R"rawliteral(</span> &deg;C
-      </div>
-      <div class="sensor">
-        💧 Độ ẩm: <span id="hum">)rawliteral" +
-         String(humidity) + R"rawliteral(</span> %
-      </div>
-
-      <div>
-        <button onclick='toggleLED(1)'>💡 LED1: <span id="l1">)rawliteral" +
-         led1 + R"rawliteral(</span></button>
-        <button onclick='toggleLED(2)'>💡 LED2: <span id="l2">)rawliteral" +
-         led2 + R"rawliteral(</span></button>
-      </div>
-    </div>
-
-    <script>
-      function toggleLED(id) {
-        fetch('/toggle?led='+id)
-          .then(response=>response.json())
-          .then(json=>{
-            document.getElementById('l1').innerText=json.led1;
-            document.getElementById('l2').innerText=json.led2;
-          });
-      }
-
-      setInterval(()=>{
-        fetch('/sensors')
-          .then(res=>res.json())
-          .then(d=>{
-            document.getElementById('temp').innerText=d.temp;
-            document.getElementById('hum').innerText=d.hum;
-          });
-      },3000);
-    </script>
-  </body>
-  </html>
-  )rawliteral";
+String getContentType(String filename) {
+  if (filename.endsWith(".html")) return "text/html";
+  if (filename.endsWith(".css")) return "text/css";
+  if (filename.endsWith(".js")) return "application/javascript";
+  if (filename.endsWith(".ico")) return "image/x-icon";
+  if (filename.endsWith(".gz")) return "application/x-gzip";
+  return "text/plain";
 }
 
-// ========== Handlers ==========
-void handleRoot() { server.send(200, "text/html", mainPage()); }
+String getFileETag(File &file) {
+  // Simple ETag: based on file size + modified time
+  return "\"" + String(file.size()) + "\"";
+}
+
+void handleFileRead(String path) {
+  if (path.endsWith("/")) path += "index.html";
+
+  String gzPath = path + ".gz";
+  if (LittleFS.exists(gzPath)) path = gzPath;
+
+  File file = LittleFS.open(path, "r");
+  if (!file) {
+    server.send(404, "text/plain", "File Not Found");
+    return;
+  }
+
+  String etag = getFileETag(file);
+  if (server.hasHeader("If-None-Match")) {
+    String clientTag = server.header("If-None-Match");
+    if (clientTag == etag) {
+      server.send(304, "text/plain", "Not Modified");
+      file.close();
+      return;
+    }
+  }
+
+  String contentType = getContentType(path);
+  server.sendHeader("Cache-Control", "max-age=86400"); // 1 day
+  server.sendHeader("ETag", etag);
+  server.streamFile(file, contentType);
+  file.close();
+}
+
+void handleRoot() { handleFileRead("/index.html"); }
+void handleCSS() { handleFileRead("/style.css"); }
+void handleJS() { handleFileRead("/script.js"); }
 
 void handleToggle()
 {
-  int led = server.arg("led").toInt();
-  if (led == 1)
+  String device = server.arg("device");
+
+  if (device == "fan")
   {
-    led1_state = !led1_state;
-    digitalWrite(LED1_PIN, led1_state);
+    fan_state = !fan_state;
+    digitalWrite(FAN_PIN, fan_state);
   }
-  else if (led == 2)
+  else if (device == "exit")
   {
-    led2_state = !led2_state;
-    NeoPixel.clear();
-    
-    for (int pixel = 0; pixel < 3; pixel++)
+    exit_sign_state = !exit_sign_state;
+    uint32_t color = exit_sign_state ? NeoPixel.Color(0, 255, 0) : NeoPixel.Color(0, 0, 0);
+    for (int i = 0; i < 3; i++)
     {
-      NeoPixel.setPixelColor(pixel, NeoPixel.Color(0, led2_state, 0));
-      NeoPixel.show();
+      NeoPixel.setPixelColor(i, color);
     }
+    NeoPixel.show();
   }
-  server.send(200, "application/json",
-              "{\"led1\":\"" + String(led1_state ? "ON" : "OFF") +
-                  "\",\"led2\":\"" + String(led2_state ? "ON" : "OFF") + "\"}");
+
+  String jsonResponse = "{\"fan\":\"" + String(fan_state ? "ON" : "OFF") +
+                        "\",\"exit\":\"" + String(exit_sign_state ? "ON" : "OFF") + "\"}";
+  server.send(200, "application/json", jsonResponse);
 }
 
 void handleSensors()
@@ -185,7 +89,9 @@ void handleSensors()
 
 void setupServer()
 {
-  server.on("/", HTTP_GET, handleRoot);
+  server.onNotFound([]() {
+    handleFileRead(server.uri());
+  });
   server.on("/toggle", HTTP_GET, handleToggle);
   server.on("/sensors", HTTP_GET, handleSensors);
   server.begin();
@@ -197,39 +103,28 @@ void startAP()
   WiFi.softAP(ssid.c_str(), password.c_str());
   Serial.print("AP IP address: ");
   Serial.println(WiFi.softAPIP());
-  isAPMode = true;
-  connecting = false;
 }
 
-// ========== Main task ==========
 void main_server_task(void *pvParameters)
 {
-  pinMode(LED1_PIN, OUTPUT);
-  pinMode(BOOT_PIN, INPUT_PULLUP);
+  if (!LittleFS.begin(true))
+  {
+    Serial.println("An error occurred while mounting LittleFS");
+    return;
+  }
 
-  // NeoPixel.begin();
+  pinMode(FAN_PIN, OUTPUT);
+  pinMode(EXIT_PIN, OUTPUT);
+
+  NeoPixel.begin();
+  NeoPixel.show();
 
   startAP();
   setupServer();
 
   while (1)
   {
+    vTaskDelay(100);
     server.handleClient();
-
-    // BOOT Button to switch to AP Mode
-    if (digitalRead(BOOT_PIN) == LOW)
-    {
-      vTaskDelay(100);
-      if (digitalRead(BOOT_PIN) == LOW)
-      {
-        if (!isAPMode)
-        {
-          startAP();
-          setupServer();
-        }
-      }
-    }
-
-    vTaskDelay(20); // avoid watchdog reset
   }
 }

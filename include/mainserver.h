@@ -4,14 +4,11 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Adafruit_NeoPixel.h>
+#include <LittleFS.h>
 #include "global.h"
 
-#define LED1_PIN 6
-#define LED2_PIN 4
-#define BOOT_PIN 0
-// extern WebServer server;
-
-// extern bool isAPMode;
+#define FAN_PIN 6
+#define EXIT_PIN 4
 
 String mainPage();
 

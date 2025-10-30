@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Dashboard</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+    <div id="alert-overlay"></div>
+    <div class="container">
+        <h1>📊 ESP32 Dashboard</h1>
+
+        <div id="alert-box" class="alert hidden"></div>
+        <div class="progress-wrapper">
+            <div class="progress-label">
+                <span>🌡️ Nhiệt độ</span>
+                <span><span id="temp-val">--</span> &deg;C</span>
+            </div>
+            <div class="progress-container">
+                <div id="temp-bar" class="progress-bar"></div>
+                <div class="threshold-marker warning" id="temp-warn-marker"></div>
+                <div class="threshold-marker critical" id="temp-crit-marker"></div>
+            </div>
+        </div>
+
+        <div class="progress-wrapper">
+            <div class="progress-label">
+                <span>💧 Độ ẩm</span>
+                <span><span id="hum-val">--</span> %</span>
+            </div>
+            <div class="progress-container">
+                <div id="hum-bar" class="progress-bar"></div>
+                <div class="threshold-marker warning" id="hum-warn-marker"></div>
+                <div class="threshold-marker critical" id="hum-crit-marker"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="fan-btn" onclick="toggleDevice('fan')">
+                🌬️ Bật quạt: <span id="fan-status">OFF</span>
+            </button>
+            <button id="exit-btn" onclick="toggleDevice('exit')">
+                🚨 Bật đèn thoát hiểm: <span id="exit-status">OFF</span>
+            </button>
+        </div>
+
+    </div>
+    <script src="/script.js"></script>
+    <script>
+        document.body.style.opacity = 0;
+        window.addEventListener("load", () => {
+            document.body.style.transition = "opacity 0.6s ease-in-out";
+            document.body.style.opacity = 1;
+        });
+    </script>
+
+</body>
+
+</html>
