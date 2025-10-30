@@ -1,8 +1,16 @@
 #ifndef __LED_BLINKY__
 #define __LED_BLINKY__
-#include <Arduino.h>
+#include <Wire.h>
+#include <DHT20.h>
 #include "global.h"
-#define LED_GPIO 48
+
+#define LED_PIN 48
+#define SDA_PIN 11
+#define SCL_PIN 12
+
+#define TEMP_COOL_MAX 30
+#define TEMP_WARM_MAX 32
+
 void led_blinky(void *pvParameters);
 
 
