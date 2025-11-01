@@ -1,6 +1,5 @@
 #include "tinyml.h"
 
-// Globals, for the convenience of one-shot setup.
 namespace
 {
     tflite::ErrorReporter *error_reporter = nullptr;
@@ -8,20 +7,26 @@ namespace
     tflite::MicroInterpreter *interpreter = nullptr;
     TfLiteTensor *input = nullptr;
     TfLiteTensor *output = nullptr;
-    constexpr int kTensorArenaSize = 8 * 1024; // Adjust size based on your model
+    constexpr int kTensorArenaSize = 8 * 1024;
     uint8_t tensor_arena[kTensorArenaSize];
-} // namespace
+}
+
+int lightValue = 0;
+int distance = 0;
+
+Ultrasonic ultrasonic(TRIGGER_PIN, ECHO_PIN);
 
 void setupTinyML()
 {
-    Serial.println("TensorFlow Lite Init....");
+    Serial.println("TensorFlow Lite Init...");
+
     static tflite::MicroErrorReporter micro_error_reporter;
     error_reporter = &micro_error_reporter;
 
-    model = tflite::GetModel(dht_anomaly_model_tflite); // g_model_data is from model_data.h
+    model = tflite::GetModel(dht_anomaly_model_tflite);
     if (model->version() != TFLITE_SCHEMA_VERSION)
     {
-        error_reporter->Report("Model provided is schema version %d, not equal to supported version %d.",
+        error_reporter->Report("Model version %d != supported version %d.",
                                model->version(), TFLITE_SCHEMA_VERSION);
         return;
     }
@@ -42,34 +47,71 @@ void setupTinyML()
     output = interpreter->output(0);
 
     Serial.println("TensorFlow Lite Micro initialized on ESP32.");
+    delay(1000);
+    Serial.println("Reading light & sonar sensors...");
 }
 
 void tiny_ml_task(void *pvParameters)
 {
-
     setupTinyML();
 
     while (1)
     {
+        lightValue = analogRead(LIGHT_PIN);
+        distance = ultrasonic.read();
 
-        // Prepare input data (e.g., sensor readings)
-        // For a simple example, let's assume a single float input
-        input->data.f[0] = glob_temperature;
-        input->data.f[1] = glob_humidity;
+        input->data.f[0] = lightValue;
+        input->data.f[1] = distance;
 
-        // Run inference
         TfLiteStatus invoke_status = interpreter->Invoke();
         if (invoke_status != kTfLiteOk)
         {
             error_reporter->Report("Invoke failed");
-            return;
+            vTaskDelay(5000);
+            continue;
         }
 
-        // Get and process output
-        float result = output->data.f[0];
-        Serial.print("Inference result: ");
-        Serial.println(result);
+        float prob0 = output->data.f[0];
+        float prob1 = output->data.f[1];
+        float prob2 = output->data.f[2];
 
-        vTaskDelay(5000);
+        int predicted_label = 0;
+        float max_conf = prob0;
+        if (prob1 > max_conf)
+        {
+            predicted_label = 1;
+            max_conf = prob1;
+        }
+        if (prob2 > max_conf)
+        {
+            predicted_label = 2;
+            max_conf = prob2;
+        }
+
+        Serial.print("Light: ");
+        Serial.print(lightValue);
+        Serial.print(" | Distance: ");
+        Serial.print(distance);
+        Serial.print(" | Label: ");
+        switch (predicted_label)
+        {
+        case 0:
+            Serial.print("Safe.");
+            break;
+        case 1:
+            Serial.print("Caution!");
+            break;
+        case 2:
+            Serial.print("Alert!!");
+            break;
+        
+        default:
+            break;
+        }
+        Serial.print(" | Confidence: ");
+        Serial.print(max_conf * 100, 2);
+        Serial.println("%");
+
+        vTaskDelay(2000);
     }
 }

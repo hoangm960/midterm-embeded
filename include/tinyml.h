@@ -2,7 +2,7 @@
 #define __TINY_ML__
 
 #include <Arduino.h>
-
+#include <Ultrasonic.h>
 #include "dht_anomaly_model.h"
 #include "global.h"
 
@@ -12,6 +12,10 @@
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/system_setup.h"
 #include "tensorflow/lite/schema/schema_generated.h"
+
+#define LIGHT_PIN 3
+#define TRIGGER_PIN 1
+#define ECHO_PIN 2
 
 void setupTinyML();
 void tiny_ml_task(void *pvParameters);
