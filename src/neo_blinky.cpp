@@ -85,7 +85,8 @@ void neo_blinky(void *pvParameters)
         else if (h <= HUMIDITY_WET)
         {
             Serial.printf("[NEO] MOIST (%.2f%%) → Blinking Yellow\n", h);
-            blink(MOIST_R, MOIST_G, MOIST_B, 500, 500, 2);
+            blink(MOIST_R, MOIST_G, MOIST_B, 100, 100, 2);
+            vTaskDelay(pdMS_TO_TICKS(600));
         }
         else
         {
