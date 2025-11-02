@@ -1,5 +1,2 @@
 .pio
 .vscode/
-*.h
-*.h5
-*.tflite
