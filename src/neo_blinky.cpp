@@ -27,6 +27,20 @@ static float getSafeHumidity()
     return h;
 }
 
+void blink(int R, int G, int B, int onTime, int offTime = 0, int times = 1)
+{
+    for (int i = 0; i < times; ++i)
+    {
+        ledRGB(R, G, B);
+        vTaskDelay(pdMS_TO_TICKS(onTime));
+        if (offTime > 0)
+        {
+            ledOff();
+            vTaskDelay(pdMS_TO_TICKS(offTime));
+        }
+    }
+}
+
 void neo_blinky(void *pvParameters)
 {
 
@@ -43,8 +57,6 @@ void neo_blinky(void *pvParameters)
     ledRGB(0, 0, 200);
     vTaskDelay(150);
     ledOff();
-
-    bool blink = false;
 
     for (;;)
     {
@@ -63,36 +75,22 @@ void neo_blinky(void *pvParameters)
         if (isnan(h))
         {
             Serial.println("[NEO] ERROR → Purple pulse");
-            ledRGB(STALE_R, STALE_G, STALE_B);
-            vTaskDelay(200);
-            ledOff();
+            blink(STALE_R, STALE_G, STALE_B, 200);
         }
         else if (h <= HUMIDITY_MOIST)
         {
             Serial.printf("[NEO] COMFORT (%.2f%%) → Solid Green\n", h);
-            ledRGB(COMF_R, COMF_G, COMF_B);
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            blink(COMF_R, COMF_G, COMF_B, 1000);
         }
         else if (h <= HUMIDITY_WET)
         {
             Serial.printf("[NEO] MOIST (%.2f%%) → Blinking Yellow\n", h);
-            blink = !blink;
-            if (blink)
-                ledRGB(MOIST_R, MOIST_G, MOIST_B);
-            else
-                ledOff();
-            vTaskDelay(pdMS_TO_TICKS(500));
+            blink(MOIST_R, MOIST_G, MOIST_B, 500, 500, 2);
         }
         else
         {
             Serial.printf("[NEO] WET (%.2f%%) → Fast Red Blink\n", h);
-            for (int i = 0; i < 3; ++i)
-            {
-                ledRGB(WET_R, WET_G, WET_B);
-                vTaskDelay(100);
-                ledOff();
-                vTaskDelay(100);
-            }
+            blink(WET_R, WET_G, WET_B, 100, 100, 3);
             vTaskDelay(pdMS_TO_TICKS(600));
         }
     }
