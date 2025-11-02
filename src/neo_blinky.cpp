@@ -1,6 +1,5 @@
 #include "neo_blinky.h"
 
-// Initialize the strip from the header definitions
 Adafruit_NeoPixel strip(NUM_PIXELS, NEO_PIN, NEO_GRB + NEO_KHZ800);
 
 static inline void ledRGB(uint8_t r, uint8_t g, uint8_t b)
@@ -10,11 +9,9 @@ static inline void ledRGB(uint8_t r, uint8_t g, uint8_t b)
 }
 static inline void ledOff() { ledRGB(0, 0, 0); }
 
-// Humidity and color constants
-constexpr float HUM_DRY_MAX = 40.0f;     // ≤ 40% → Blue
-constexpr float HUM_COMFORT_MAX = 60.0f; // 40–60% → Green
-constexpr float HUM_MOIST_MAX = 80.0f;   // 60–80% → Yellow
-// > 80% → Red
+constexpr float HUM_DRY_MAX = 40.0f;
+constexpr float HUM_COMFORT_MAX = 60.0f;
+constexpr float HUM_MOIST_MAX = 80.0f;
 
 static const uint8_t
     DRY_R = 0,
@@ -24,9 +21,6 @@ static const uint8_t
     WET_R = 255, WET_G = 0, WET_B = 0,         // Red
     STALE_R = 150, STALE_G = 0, STALE_B = 150; // Purple
 
-// FIX: ---- DELETED local semaphores, mutex, and sensor task ----
-
-// FIX: New helper function to safely read the GLOBAL humidity
 static float getSafeHumidity()
 {
     float h = NAN;
@@ -38,16 +32,15 @@ static float getSafeHumidity()
     return h;
 }
 
-// tasks
-void TaskNeoPixelControl(void *pvParameters) // Renamed from TaskLEDControl
+void neo_blinky(void *pvParameters)
 {
+
     strip.begin();
     strip.setBrightness(BRIGHTNESS);
     strip.show();
 
     Serial.println("=== NeoPixel Humidity Indicator Started ===");
 
-    // Startup animation
     ledRGB(200, 0, 0);
     vTaskDelay(150);
     ledRGB(0, 200, 0);
@@ -60,30 +53,24 @@ void TaskNeoPixelControl(void *pvParameters) // Renamed from TaskLEDControl
 
     for (;;)
     {
-        // FIX: Wait on the GLOBAL semaphore from the sensor task
         if (xSemaphoreTake(xNewSampleSem, pdMS_TO_TICKS(8000)) != pdTRUE)
         {
-            // Timeout → stale
             Serial.println("[NEO] STALE → Purple pulse");
             ledRGB(STALE_R, STALE_G, STALE_B);
             vTaskDelay(200);
             ledOff();
-            // ... (rest of stale animation)
             vTaskDelay(800);
             continue;
         }
 
-        // FIX: Read humidity from the new safe-access function
         float h = getSafeHumidity();
 
         if (isnan(h))
         {
-            // Sensor error
             Serial.println("[NEO] ERROR → Purple pulse");
             ledRGB(STALE_R, STALE_G, STALE_B);
             vTaskDelay(200);
             ledOff();
-            // ... (rest of error animation)
         }
         else if (h <= HUM_DRY_MAX)
         {
@@ -120,25 +107,4 @@ void TaskNeoPixelControl(void *pvParameters) // Renamed from TaskLEDControl
             vTaskDelay(pdMS_TO_TICKS(600));
         }
     }
-}
-
-// This is the main "setup" task called from main.cpp
-void neo_blinky(void *pvParameters)
-{
-    // FIX: Remove Serial.begin() (already in main)
-    // FIX: Remove Wire.begin() (handled by temp_humi_monitor)
-    // FIX: Remove mutex/semaphore creation (they are global)
-
-    // Initialize NeoPixel
-    strip.begin();
-    strip.setBrightness(BRIGHTNESS);
-    strip.show();
-
-    // Create tasks
-    xTaskCreate(TaskNeoPixelControl, "NeoPixelControl", 4096, NULL, 2, NULL);
-
-    // FIX: Remove TaskReadSensor creation
-
-    // FIX: This setup task is done, so it deletes itself to free resources
-    vTaskDelete(NULL);
 }
