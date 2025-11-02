@@ -1,6 +1,6 @@
 const TEMP_WARN = 27;
-const TEMP_CRIT = 35;
-const HUM_WARN = 80;
+const TEMP_CRIT = 30;
+const HUM_WARN = 60;
 const HUM_CRIT = 90;
 
 const fanBtn = document.getElementById('fan-btn');
