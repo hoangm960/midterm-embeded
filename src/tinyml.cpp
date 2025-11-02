@@ -88,7 +88,7 @@ void tiny_ml_task(void *pvParameters)
             max_conf = prob2;
         }
 
-        Serial.print("Light: ");
+        Serial.print("[ML] Light: ");
         Serial.print(lightValue);
         Serial.print(" | Distance: ");
         Serial.print(distance);
@@ -104,14 +104,13 @@ void tiny_ml_task(void *pvParameters)
         case 2:
             Serial.print("Alert!!");
             break;
-        
+
         default:
             break;
         }
         Serial.print(" | Confidence: ");
         Serial.print(max_conf * 100, 2);
         Serial.println("%");
-
         vTaskDelay(2000);
     }
 }

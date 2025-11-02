@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <Ultrasonic.h>
-#include "dht_anomaly_model.h"
+#include "./MLscript/dht_anomaly_model.h"
 #include "global.h"
 
 #include <TensorFlowLite_ESP32.h>
