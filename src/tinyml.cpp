@@ -88,29 +88,18 @@ void tiny_ml_task(void *pvParameters)
             max_conf = prob2;
         }
 
-        Serial.print("[ML] Light: ");
-        Serial.print(lightValue);
-        Serial.print(" | Distance: ");
-        Serial.print(distance);
-        Serial.print(" | Label: ");
+        String label_str = "Safe.";
         switch (predicted_label)
         {
-        case 0:
-            Serial.print("Safe.");
-            break;
         case 1:
-            Serial.print("Caution!");
+            label_str = "Caution!";
             break;
         case 2:
-            Serial.print("Alert!!");
-            break;
-
-        default:
+            label_str = "Alert!!";
             break;
         }
-        Serial.print(" | Confidence: ");
-        Serial.print(max_conf * 100, 2);
-        Serial.println("%");
+
+        Serial.printf("[ML] Light: %d | Distance: %d | Label: %s | Confidence: %.2f %% \n", lightValue, distance, label_str, max_conf*100);
         vTaskDelay(2000);
     }
 }
