@@ -9,14 +9,9 @@ static inline void ledRGB(uint8_t r, uint8_t g, uint8_t b)
 }
 static inline void ledOff() { ledRGB(0, 0, 0); }
 
-constexpr float HUM_DRY_MAX = 40.0f;
-constexpr float HUM_COMFORT_MAX = 60.0f;
-constexpr float HUM_MOIST_MAX = 80.0f;
-
 static const uint8_t
-    DRY_R = 0,
-    DRY_G = 0, DRY_B = 200,                    // Blue
-    COMF_R = 0, COMF_G = 200, COMF_B = 0,      // Green
+    COMF_R = 0,
+    COMF_G = 200, COMF_B = 0,                  // Green
     MOIST_R = 255, MOIST_G = 200, MOIST_B = 0, // Yellow
     WET_R = 255, WET_G = 0, WET_B = 0,         // Red
     STALE_R = 150, STALE_G = 0, STALE_B = 150; // Purple
@@ -72,19 +67,13 @@ void neo_blinky(void *pvParameters)
             vTaskDelay(200);
             ledOff();
         }
-        else if (h <= HUM_DRY_MAX)
-        {
-            Serial.printf("[NEO] DRY (%.2f%%) → Solid Blue\n", h);
-            ledRGB(DRY_R, DRY_G, DRY_B);
-            vTaskDelay(pdMS_TO_TICKS(1000));
-        }
-        else if (h <= HUM_COMFORT_MAX)
+        else if (h <= HUMIDITY_MOIST)
         {
             Serial.printf("[NEO] COMFORT (%.2f%%) → Solid Green\n", h);
             ledRGB(COMF_R, COMF_G, COMF_B);
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
-        else if (h <= HUM_MOIST_MAX)
+        else if (h <= HUMIDITY_WET)
         {
             Serial.printf("[NEO] MOIST (%.2f%%) → Blinking Yellow\n", h);
             blink = !blink;

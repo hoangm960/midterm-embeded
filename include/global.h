@@ -6,6 +6,12 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
+#define TEMP_WARN 27.0f
+#define TEMP_CRITICAL 30.0f
+
+#define HUMIDITY_MOIST 60.0f
+#define HUMIDITY_WET 90.0f
+
 // Sensor data
 extern float glob_temperature;
 extern float glob_humidity;

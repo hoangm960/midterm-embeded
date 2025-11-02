@@ -39,7 +39,7 @@ void led_blinky(void *pvParameters)
             digitalWrite(LED_PIN, LOW);
             vTaskDelay(pdMS_TO_TICKS(300));
         }
-        else if (t < TEMP_COOL_MAX)
+        else if (t < TEMP_WARN)
         {
             Serial.printf("[LED] COOL (%.2f°C) -> slow blink\n", t);
             digitalWrite(LED_PIN, HIGH);
@@ -47,7 +47,7 @@ void led_blinky(void *pvParameters)
             digitalWrite(LED_PIN, LOW);
             vTaskDelay(pdMS_TO_TICKS(800));
         }
-        else if (t < TEMP_WARM_MAX)
+        else if (t < TEMP_CRITICAL)
         {
             Serial.printf("[LED] WARM (%.2f°C) -> double blink\n", t);
             for (int i = 0; i < 2; ++i)

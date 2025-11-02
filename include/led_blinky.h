@@ -8,9 +8,6 @@
 #define SDA_PIN 11
 #define SCL_PIN 12
 
-#define TEMP_COOL_MAX 30
-#define TEMP_WARM_MAX 32
-
 void led_blinky(void *pvParameters);
 
 

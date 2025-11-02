@@ -12,14 +12,9 @@ LiquidCrystal_I2C lcd(33, 16, 2);
 
 static SemaphoreHandle_t i2cMutex = NULL;
 static QueueHandle_t sensorQueue = NULL;
-static SemaphoreHandle_t alarmSemaphore = NULL;
-
-volatile int alarmState = 0; // 0: normal, 1: low, 2: high
 
 void SensorTask(void *pvParameters)
 {
-    static int prevAlarmState = -1;
-
     for (;;)
     {
         float t = NAN, h = NAN;
@@ -41,10 +36,15 @@ void SensorTask(void *pvParameters)
         if (!isnan(t) && !isnan(h))
         {
             int newState = 0;
-            if (t < TEMP_LOW)
-                newState = 1;
-            else if (t > TEMP_HIGH)
+            if (t > TEMP_CRITICAL && h < HUMIDITY_MOIST)
+            {
                 newState = 2;
+            }
+            else if ((t >= TEMP_WARN && t <= TEMP_CRITICAL) &&
+                     (h >= HUMIDITY_MOIST && h <= HUMIDITY_WET))
+            {
+                newState = 1;
+            }
 
             SensorData_t data = {t, h, newState};
             if (xQueueOverwrite(sensorQueue, &data) != pdPASS)
@@ -62,15 +62,8 @@ void SensorTask(void *pvParameters)
             {
                 Serial.println("Global data mutex timeout in SensorTask");
             }
-            
-            xSemaphoreGive(xNewSampleSem);
 
-            if (newState != prevAlarmState)
-            {
-                alarmState = newState;
-                xSemaphoreGive(alarmSemaphore);
-                prevAlarmState = newState;
-            }
+            xSemaphoreGive(xNewSampleSem);
 
             Serial.printf("[SensorTask] Temp: %.2f C, Humi: %.2f %% \n", t, h);
         }
@@ -100,19 +93,18 @@ void DisplayTask(void *pvParameters)
 
                 if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(2000)) == pdTRUE)
                 {
-                    lcd.clear();
                     lcd.setCursor(0, 0);
-                    
+
                     switch (data.alarmState)
                     {
                     case 1:
-                        lcd.print("Status: Warning");
+                        lcd.print("Status: Warning ");
                         break;
                     case 2:
                         lcd.print("Status: CRITICAL");
                         break;
                     default:
-                        lcd.print("Status: Normal");
+                        lcd.print("Status: Normal  ");
                         break;
                     }
 
@@ -135,28 +127,6 @@ void DisplayTask(void *pvParameters)
     }
 }
 
-void AlarmTask(void *pvParameters)
-{
-    for (;;)
-    {
-        if (xSemaphoreTake(alarmSemaphore, portMAX_DELAY) == pdTRUE)
-        {
-            switch (alarmState)
-            {
-            case 1:
-                Serial.println("ALARM: Temperature LOW!");
-                break;
-            case 2:
-                Serial.println("ALARM: Temperature HIGH!");
-                break;
-            default:
-                Serial.println("ALARM: Temperature Normal.");
-                break;
-            }
-        }
-    }
-}
-
 void temp_humi_monitor(void *pvParameters)
 {
     Wire.begin(SDA_PIN, SCL_PIN);
@@ -171,10 +141,9 @@ void temp_humi_monitor(void *pvParameters)
     lcd.print("System Booting...");
 
     i2cMutex = xSemaphoreCreateMutex();
-    alarmSemaphore = xSemaphoreCreateBinary();
     sensorQueue = xQueueCreate(1, sizeof(SensorData_t));
 
-    if (!i2cMutex || !alarmSemaphore || !sensorQueue || !xGlobalDataMutex || !xNewSampleSem)
+    if (!i2cMutex || !sensorQueue || !xGlobalDataMutex || !xNewSampleSem)
     {
         Serial.println("Failed to create RTOS resources! Halting.");
         lcd.clear();
@@ -198,13 +167,6 @@ void temp_humi_monitor(void *pvParameters)
     {
         Serial.println("Failed to create DisplayTask");
     }
-
-    r = xTaskCreatePinnedToCore(AlarmTask, "AlarmTask", 2048, NULL, 1, NULL, 1);
-    if (r != pdPASS)
-    {
-        Serial.println("Failed to create AlarmTask");
-    }
-
     Serial.println("Temperature/Humidity monitor module started.");
     vTaskDelete(NULL);
 }

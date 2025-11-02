@@ -8,9 +8,7 @@
 #define SDA_PIN 11
 #define SCL_PIN 12
 
-#define TEMP_LOW 25.0f
-#define TEMP_HIGH 28.0f
-#define SENSOR_DELAY_MS 5000
+#define SENSOR_DELAY_MS 2000
 
 void temp_humi_monitor(void *pvParameters);
 
